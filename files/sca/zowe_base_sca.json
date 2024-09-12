@@ -12,7 +12,7 @@
       "ResourceClass": "FACILITY",
       "WhoNeedsAccess": "ZWESVUSR",
       "LevelOfAccessRequired": "READ",
-      "ItemDescription": "To allow Zowe ZWESVSTC processes to access the Zowe ZIS cross-memory server."
+      "ItemDescription": "To allow Zowe ZWESVSTC processes to access the Zowe ZIS cross memory server."
     },
     {
       "ItemID": "AZWE003BASE0SI00002000",
