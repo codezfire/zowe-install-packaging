@@ -9,8 +9,8 @@
   Copyright Contributors to the Zowe Project.
 */
 
-import * as std from 'std';
-import * as os from 'os';
+import * as std from 'cm_std';
+import * as os from 'cm_os';
 import * as xplatform from 'xplatform';
 
 import * as fs from './fs';
@@ -128,36 +128,21 @@ export function date(...args: string[]): string|undefined {
 
 
 let logExists = false;
-let logFile:std.File|null = null;
 
 function writeLog(message: string): boolean {
+  const filename = std.getenv('ZWE_PRIVATE_LOG_FILE');
+  if (!filename) {
+      return false;
+  }
+  logExists = fs.fileExists(filename);
   if (!logExists) {
-    const filename = std.getenv('ZWE_PRIVATE_LOG_FILE');
-    if (filename) {
+      fs.createFile(filename, 0o640, message);
       logExists = fs.fileExists(filename);
-      if (!logExists) {
-        fs.createFile(filename, 0o640, message);
-        logExists = fs.fileExists(filename);
-      }
-      if (logExists) {
-        let errObj = {errno:undefined};
-        logFile = std.open(filename, 'w', errObj);
-        if (errObj.errno) {
-          printError(`Error opening file ${filename}, errno=${errObj.errno}`);
-          logFile=null;
-          logExists=false;
-          return false;
-        }
-      }
-    }
-  }
-  if (logFile===undefined || logFile===null) {
-    return false;
   } else {
-    //TODO this does utf8. should we flip it to 1047 on zos?
-    logFile.puts(message);
-    return true;
+      xplatform.appendFileUTF8(filename, xplatform.AUTO_DETECT, message);
+      return true;
   }
+  return logExists;
 }
 
 
@@ -345,7 +330,7 @@ export function getZoweRuntimeManifest(): any|undefined {
   if (!runtimeManifest) {
     const manifestFileName = `${std.getenv('ZWE_zowe_runtimeDirectory')}/manifest.json`;
     const result = xplatform.loadFileUTF8(manifestFileName,xplatform.AUTO_DETECT);
-    if (result){
+    if (!result){
       printError('Could not read runtime manifest in '+manifestFileName);
     } else {
       runtimeManifest=JSON.parse(result);

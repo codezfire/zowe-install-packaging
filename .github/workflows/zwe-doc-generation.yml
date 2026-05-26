@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCS_SITE_ZWE_COMMAND_REFERENCE_DIR: docs/appendix/zwe_server_command_reference
+  DOCS_SITE_ZWE_COMMAND_REFERENCE_DIR: versioned_docs/version-v2.18.x/appendix/zwe_server_command_reference
   DOCS_SITE_TARGET_BRANCH: docs-staging
   DOCS_SITE_COMMIT_BRANCH: auto-update-zwe-reference
   ZWE_DOC_GENERATION_DIR: .dependency/zwe_doc_generation
@@ -20,12 +20,12 @@ jobs:
 
     steps:
       - name: Set up Node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: '14'
       
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up git
         run: |
@@ -58,10 +58,10 @@ jobs:
           then 
             echo ">>>>>Changes committed to ${{ env.DOCS_SITE_COMMIT_BRANCH }}, now pushing";
             git push origin ${{ env.DOCS_SITE_COMMIT_BRANCH }}
-            echo "::set-output name=createPr::true"
+            echo "createPr=true" >> $GITHUB_OUTPUT
           else
             echo ">>>>>No update to documentation";
-            echo "::set-output name=createPr::false"
+            echo "createPr=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create PR if doesn't exist

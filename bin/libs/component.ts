@@ -9,8 +9,8 @@
   Copyright Contributors to the Zowe Project.
 */
 
-import * as std from 'std';
-import * as os from 'os';
+import * as std from 'cm_std';
+import * as os from 'cm_os';
 import * as zos from 'zos';
 import * as xplatform from 'xplatform';
 import { ConfigManager } from 'Configuration';
@@ -24,6 +24,7 @@ import * as shell from './shell';
 import * as configmgr from './configmgr';
 import * as varlib from './var';
 import * as fakejq from './fakejq';
+import * as configUtils from './config';
 
 const CONFIG_MGR=configmgr.CONFIG_MGR;
 const ZOWE_CONFIG=configmgr.ZOWE_CONFIG;
@@ -44,11 +45,13 @@ const PLUGIN_DEF_SCHEMA_ID = "https://zowe.org/schemas/v2/appfw-plugin-definitio
 const PLUGIN_DEF_SCHEMAS = `${runtimeDirectory}/components/app-server/schemas/plugindefinition-schema.json`;
 
 
-export function getEnabledComponents(): string[] {
-  let components = Object.keys(ZOWE_CONFIG.components);
-  let enabled:string[] = [];
-  components.forEach((key:string) => {
-    if (ZOWE_CONFIG.components[key].enabled == true) {
+export function getEnabledComponents() {
+  let haInstance = configUtils.sanitizeHaInstanceId();
+  let haConfig = configmgr.getZoweConfig(haInstance);
+  let components = Object.keys(haConfig.components);
+  let enabled: string[] = [];
+  components.forEach((key) => {
+    if (haConfig.components[key].enabled == true) {
       enabled.push(key);
     }
   });
@@ -111,47 +114,52 @@ function showExceptions(e: any,depth: number): void {
   }
 }
 
-export function getPluginDefinition(pluginRootPath:string) {
+export function getPluginDefinition(pluginRootPath:string, continueOnFailure?: boolean) {
   const pluginDefinitionPath = `${pluginRootPath}/pluginDefinition.json`;
+  const configId = `appfwPlugin:${pluginRootPath}`;
+
+  const printer = continueOnFailure ? common.printError : common.printErrorAndExit;
 
   if (fs.fileExists(pluginDefinitionPath)) {
     let status;
-    if ((status = CONFIG_MGR.addConfig(pluginRootPath))) {
-      common.printErrorAndExit(`Could not add config for ${pluginRootPath}, status=${status}`);
+    if ((status = CONFIG_MGR.addConfig(configId))) {
+      printer(`Could not add config for ${pluginRootPath}, status=${status}`);
       return null;
     }
     
-    if ((status = CONFIG_MGR.loadSchemas(pluginRootPath, PLUGIN_DEF_SCHEMAS))) {
-      common.printErrorAndExit(`Could not load schemas ${PLUGIN_DEF_SCHEMAS} for plugin ${pluginRootPath}, status=${status}`);
+    if ((status = CONFIG_MGR.loadSchemas(configId, PLUGIN_DEF_SCHEMAS))) {
+      printer(`Could not load schemas ${PLUGIN_DEF_SCHEMAS} for plugin ${pluginRootPath}, status=${status}`);
       return null;
     }
 
 
-    if ((status = CONFIG_MGR.setConfigPath(pluginRootPath, `FILE(${pluginDefinitionPath})`))) {
-      common.printErrorAndExit(`Could not set config path for ${pluginDefinitionPath}, status=${status}`);
+    if ((status = CONFIG_MGR.setConfigPath(configId, `FILE(${pluginDefinitionPath})`))) {
+      printer(`Could not set config path for ${pluginDefinitionPath}, status=${status}`);
       return null;
     }
-    if ((status = CONFIG_MGR.loadConfiguration(pluginRootPath))) {
-      common.printErrorAndExit(`Could not load config for ${pluginDefinitionPath}, status=${status}`);
+    if ((status = CONFIG_MGR.loadConfiguration(configId))) {
+      printer(`Could not load config for ${pluginDefinitionPath}, status=${status}`);
       return null;
     }
 
-    let validation = CONFIG_MGR.validate(pluginRootPath);
+    let validation = CONFIG_MGR.validate(configId);
     if (validation.ok){
       if (validation.exceptionTree){
         common.printError(`Validation of ${pluginDefinitionPath} against schema ${PLUGIN_DEF_SCHEMA_ID} found invalid JSON Schema data`);
         showExceptions(validation.exceptionTree, 0);
-        std.exit(1);
+        if (!continueOnFailure) {
+          std.exit(1);
+        }
         return null;
       } else {
-        return CONFIG_MGR.getConfigData(pluginRootPath);
+        return CONFIG_MGR.getConfigData(configId);
       }
     } else {
-      common.printErrorAndExit(`Error occurred on validation of ${pluginDefinitionPath} against schema ${PLUGIN_DEF_SCHEMA_ID} `);
+      printer(`Error occurred on validation of ${pluginDefinitionPath} against schema ${PLUGIN_DEF_SCHEMA_ID} `);
       return null;
     }
   } else {
-    common.printErrorAndExit(`Plugin at ${pluginRootPath} has no pluginDefinition.json`);
+    printer(`Plugin at ${pluginRootPath} has no pluginDefinition.json`);
     return null;
   }
 }
@@ -353,15 +361,7 @@ export function findAllEnabledComponents(): string {
 }
 
 export function findAllEnabledComponents2(): string[] {
-  let installedComponentsEnv=std.getenv('ZWE_INSTALLED_COMPONENTS');
-  let installedComponents = installedComponentsEnv ? installedComponentsEnv.split(',') : null;
-  if (!installedComponents) {
-    installedComponents = findAllInstalledComponents2();
-  }
-  return installedComponents.filter(function(component: string) {
-    let componentNameAsEnv=stringlib.sanitizeAlphanum(component);
-    return std.getenv(`ZWE_components_${componentNameAsEnv}_enabled`) == 'true';
-  });
+  return getEnabledComponents();
 }
 
 export function findAllLaunchComponents(): string {
@@ -385,6 +385,32 @@ export function findAllLaunchComponents2(): string[] {
     }
     return false;
   });
+}
+
+function getBooleanEnv(variableName) {
+  const value = std.getenv(`${variableName}`);
+  if (value === "true") {
+      return true
+  }
+  if (value === "false") {
+      return false
+  }
+  return undefined
+}
+
+
+function isClientAttls() {
+  const clientGlobalAttls = getBooleanEnv('ZWE_zowe_network_client_tls_attls');
+  const serverGlobalAttls = getBooleanEnv('ZWE_zowe_network_server_tls_attls');
+  const clientLocalAttls = getBooleanEnv('ZWE_components_zaas_zowe_network_client_tls_attls');
+  const serverLocalAttls = getBooleanEnv('ZWE_components_zaas_zowe_network_server_tls_attls');
+  const clientAttls = clientGlobalAttls || clientLocalAttls;
+  if ((clientGlobalAttls !== false) && (clientLocalAttls !== false) && (!clientAttls)) {
+    // If client attls not explicitly false OR truthy, have client follow server attls variable. it simplifies common case in which users want both.
+    return serverGlobalAttls || serverLocalAttls;
+  } else {
+    return clientAttls;
+  }
 }
 
 export function processComponentApimlStaticDefinitions(componentDir: string): boolean {
@@ -418,6 +444,31 @@ export function processComponentApimlStaticDefinitions(componentDir: string): bo
 
         const contents = xplatform.loadFileUTF8(path,xplatform.AUTO_DETECT);
         if (contents) {
+          const zosmfScheme = std.getenv("ZOSMF_SCHEME");
+          const attls = isClientAttls()
+          const schemeEnv = std.getenv("ZWE_zOSMF_scheme");
+
+          let scheme = "https";
+          let securePortEnabled = true;
+          let nonSecurePortEnabled = false;
+
+          if (zosmfScheme) {
+            scheme = zosmfScheme;
+          } else if (schemeEnv) {
+            scheme = schemeEnv;
+          } else if (attls) {
+            scheme = "http";
+          }
+
+          if (scheme === "http") {
+            securePortEnabled = false;
+            nonSecurePortEnabled = true;
+          }
+          
+          std.setenv('ZOSMF_SCHEME', scheme);
+          std.setenv('ZOSMF_NON_SECURE_PORT_ENABLED', `${nonSecurePortEnabled}`);
+          std.setenv('ZOSMF_SECURE_PORT_ENABLED', `${securePortEnabled}`);
+
           const resolvedContents = varlib.resolveShellTemplate(contents);
 
           const zweCliParameterHaInstance=std.getenv("ZWE_CLI_PARAMETER_HA_INSTANCE");
@@ -672,7 +723,11 @@ export function zisPluginInstall(pluginPath: string, zisPluginlib: string, zisPa
   if (changed) {
     common.printDebug(`Parmlib modified, writing as \n${parmlibContents}`);
     xplatform.storeFileUTF8(parmlibMemberAsUnixFile, xplatform.AUTO_DETECT, parmlibContents);
-    zosdataset.copyToDataset(parmlibMemberAsUnixFile, `${zisParmlib}(${zisParmlibMember})`, "", true);
+    const rc = zosdataset.copyToDataset(parmlibMemberAsUnixFile, `${zisParmlib}(${zisParmlibMember})`, "", true);
+    if (rc != 0) {
+      common.printError(`Error ZWEL0200E: Failed to copy USS file ${parmlibMemberAsUnixFile} to MVS data set ${zisParmlib}.`);
+      return 200;
+    }
   }
   return 0;
 }

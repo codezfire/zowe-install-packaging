@@ -22,6 +22,8 @@ export NODE_STDIN_CCSID=1047
 # Workaround Fix for node 8.16.1 that requires compatibility mode for untagged files
 export __UNTAGGED_READ_MODE=V6
 
+NODE_MIN=18
+
 ensure_node_is_on_path() {
   if [[ ":${PATH}:" != *":${NODE_HOME}/bin:"* ]]; then
     export PATH="${NODE_HOME}/bin:${PATH}"
@@ -53,8 +55,7 @@ shell_read_yaml_node_home() {
 detect_node_home() {
   node_home=
 
-  # do we have which?
-  node_bin_home=$(which node 2>/dev/null)
+  node_bin_home=$(whence node 2>/dev/null)
   if [ -n "${node_bin_home}" ]; then
     # extract node home from result like: /var/nodejs/node-v14.16.0-os390-s390x-202103142315/bin/node
     node_home=$(dirname "$(dirname "${node_bin_home}")")
@@ -92,7 +93,7 @@ require_node() {
   fi
 
   if [ -z "${NODE_HOME}" ]; then
-    print_error_and_exit "Error ZWEL0121E: Cannot find node. Please define NODE_HOME environment variable." "" 121
+    print_error_and_exit "Error ZWEL0121E: Cannot find node. Set the node.home value in the Zowe YAML, or include node in the PATH environment variable of any accounts that start or manage Zowe" "" 121
   fi
 
   ensure_node_is_on_path
@@ -122,12 +123,13 @@ validate_node_home() {
   node_fix_version=$(echo ${node_version} | cut -d '.' -f 3)
 
   # check node version
-  if [ "${node_version}" = "v14.17.2" ]; then
-    print_error "Node ${node_version} specifically is not compatible with Zowe. Please use a different version. See https://docs.zowe.org/stable/troubleshoot/app-framework/app-known-issues.html#desktop-apps-fail-to-load for more details."
+  if [ "${node_version}" = "v18.12.1" ]; then
+    print_error "Node ${node_version} specifically is not compatible with Zowe. Please use a different version. See https://github.com/ibmruntimes/node-zos/issues/21 for more details."
     return 1
   fi
-  if [ ${node_major_version} -lt 14 ]; then
-    print_error "Node ${node_version} is less than the minimum level required of v14+."
+  
+  if [ ${node_major_version} -lt ${NODE_MIN} ]; then
+    print_error "Node ${node_version} is less than the minimum level required of v${NODE_MIN}+."
     return 1
   fi
   print_debug "Node ${node_version} is supported."

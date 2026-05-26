@@ -38,7 +38,8 @@ validate_zosmf_host_and_port() {
     if [ -z "${http_response_code}" ]; then
       print_error "Warning: Could not validate if z/OS MF is available on 'https://${zosmf_host}:${zosmf_port}/zosmf/info'. No response code from z/OSMF server."
       zosmf_check_passed=false
-    elif [ ${http_response_code} != 200 ]; then
+    # RSU2512 -> running z/OSMF is returning 401
+    elif [ ${http_response_code} != 200 -a ${http_response_code} != 401 ]; then
       print_error "Could not contact z/OS MF on 'https://${zosmf_host}:${zosmf_port}/zosmf/info' - ${http_response_code}"
       zosmf_check_passed=false
       return 1
@@ -46,19 +47,6 @@ validate_zosmf_host_and_port() {
   fi
 
   if [ "${zosmf_check_passed}" = "true" ]; then
-    print_message "Successfully checked z/OS MF is available on 'https://${zosmf_host}:${zosmf_port}/zosmf/info'"
-  fi
-}
-
-validate_zosmf_as_auth_provider() {
-  zosmf_host="${1}"
-  zosmf_port="${2}"
-  auth_provider="${3}"
-
-  if [ -n "${zosmf_host}" -a -n "${zosmf_port}" ]; then
-    if [ "${auth_provider}" = "zosmf" ]; then
-      print_error "z/OSMF is not configured. Using z/OSMF as authentication provider is not supported."
-      return 1
-    fi
+    print_message "Successfully checked z/OS MF is available on 'https://${zosmf_host}:${zosmf_port}/zosmf/info' - ${http_response_code}"
   fi
 }

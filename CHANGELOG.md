@@ -3,6 +3,94 @@
 All notable changes to the Zowe Installer will be documented in this file.
 <!--Add the PR or issue number to the entry if available.-->
 
+## `2.18.5`
+- Bugfix: Incorrect keyword was used for ACF2 key ring statement. [#4680](https://github.com/zowe/zowe-install-packaging/pull/4680)
+- Bugfix: `cleanup-ipc.mq.sh` script updated to reflect changes in `ipcs` command output. [#4690](https://github.com/zowe/zowe-install-packaging/pull/4690)
+
+## `2.18.4`
+- Bugfix: Running z/OSMF is returning 401, if RSU2512 was applied. [#4658](https://github.com/zowe/zowe-install-packaging/pull/4658)
+- Bugfix: `detect_java_home` and `detect_node_home` routines used incorrect shell command [#4572](https://github.com/zowe/zowe-install-packaging/pull/4572)
+
+## `2.18.3`
+- Bugfix: internal routine `copy_to_data_set` did not correctly check if data set exists. [#4489](https://github.com/zowe/zowe-install-packaging/pull/4489)
+- Bugfix: `--update-config` might fail if the specified config file is a symbolic link. [#4493](https://github.com/zowe/zowe-install-packaging/pull/4493)
+
+## `2.18.2`
+- Bugfix: JCL sample `ZWEINSTL` did not include the `ZWESLSTC`. [#4382](https://github.com/zowe/zowe-install-packaging/pull/4382)
+- Bugfix: YAML lookup for HA instances within "haInstances" was not working when HA instance names were uppercase. Now, the lookup is case insensitive to allow for any casing of HA instance names. [#4378](https://github.com/zowe/zowe-install-packaging/pull/4378)
+
+## `2.18.1`
+- Bugfix: When logging `zwe` command, sometimes the log has wrong file tag and the log is unreadable. [#4068](https://github.com/zowe/zowe-install-packaging/pull/4068)
+- Bugfix: When `--log-dir` parameter for `zwe` command is a file, there might be an error "InternalError: stack overflow". [#4063](https://github.com/zowe/zowe-install-packaging/pull/4063)
+- Bugfix: Error message `ZWEL0141E` did not print user ID. [#3971](https://github.com/zowe/zowe-install-packaging/pull/3971)
+
+## `2.17.0`
+
+## New features and enhancements
+- Enhancement: `zwe components install` and `zwe components upgrade` now checks the schema validity of any application framework plugins present within a component, so that you will know better if a component is valid prior to running Zowe. [#3866](https://github.com/zowe/zowe-install-packaging/pull/3866) 
+- Enhancement: Added zowe.network.server.tls.attls and zowe.network.client.tls.attls as booleans for controlling global or per-component way to tell Zowe servers that they should operate in a mode compatible with an AT-TLS setup. [#3463](https://github.com/zowe/zowe-install-packaging/pull/3463)
+
+## `2.16.0`
+
+## Minor enhancements/defect fixes
+- Enhancement: Reduced resource consumption by removal of one shell process per server that was used when starting each server.  (#3812)
+- Enhancement: The command `zwe support` now includes CEE Runtime option output to better diagnose issues related to environment customization. (#3799)
+- Bugfix: zowe.network.validatePortFree and zowe.network.vipaIp variables were moved from zowe.network to zowe.network.server in the schema but not in the code, causing inability to use them without the workaround of specifying them as environment variables ZWE_NETWORK_VALIDATE_PORT_FREE and ZWE_NETWORK_VIPA_IP instead. Now, the variables match the schema: zowe.network.server is used instead of zowe.network.
+- Bugfix: configmgr operations now run with HEAPPOOLS64 set to OFF to avoid abends caused when this parameter is not OFF. (#3799)
+
+
+## `2.15.0`
+
+## New features and enhancements
+
+## Minor enhancements/defect fixes
+- Bugfix: `zwe diagnose` running under comfigmgr and output formatted. Fixes #[3627](https://github.com/zowe/zowe-install-packaging/issues/3627).
+
+## `2.14.0`
+
+### New features and enhancements
+- Enhancement: configmgr.ts now can return a Zowe config with the given HA instance's configuration substituted for convenience. This now used in zwe to fix an issue where zwe would not respect the preference of if a component was enabled or disabled in a particular instance when zowe.useConfigmgr was set to true.
+
+#### Minor enhancements/defect fixes
+- Bugfix: environment variables were not using the values specified for each HA instance when zowe.useConfigmgr was set to true.
+
+## `2.13.0`
+
+### New features and enhancements
+- Enhancement: Added utility "getesm" into bin/utils. When run it outputs to STDOUT which ESM your system is using. (#3662)
+
+#### Minor enhancements/defect fixes
+- Bugfix: Workflow files in the Zowe PAX are now ASCII-encoded. Fixes [#3591](https://github.com/zowe/zowe-install-packaging/issues/3591).
+- Enhancement: `/bin/utils/date-add.rex` utility is accepting the date formatting as combination of YY|YYYY, MM, DD and any separator.
+
+## `2.12.0`
+
+### New features and enhancements
+
+#### Minor enhancements/defect fixes
+
+## `2.11.0`
+
+### New features and enhancements
+- Enhancement: Duplicate log messages into syslog according to "zowe.sysMessages" array [#93](https://github.com/zowe/launcher/pull/93)
+
+#### Minor enhancements/defect fixes
+- Bugfix: `zowe-yaml-schema.json` validates unix directory path as `server-common#zowePath`
+- Bugfix: Fixed that Zowe would allow newer Java versions to generate PKCS12 keystores that was not compatible with some components. Newer versions of Java by default create PKCS12 keystores that aren't compatible with GSK / SystemSSL which components such as ZSS use, but include flags to restore a compatibility mode, which Zowe now uses. (#3507)
+
+## `2.10.0`
+
+### New features and enhancements
+- Enhancement: Added a new zwe "diagnose" command to find help on zowe error messages. (#3455)
+
+#### Minor enhancements/defect fixes
+- Enhancement: Check for node v18 which is now supported, but disallow v18.12.1 because it is known not to work for Zowe. (#3485)
+
+## `2.9.0`
+
+### New features and enhancements
+- Users who have not set the value of "zowe.useConfimgr" will have the behavior now set to "true" rather than the previous "false". If you wish to use false still, just set "zowe.useConfigmgr=false" explicitly.
+
 ## `2.8.0`
 
 ### New features and enhancements

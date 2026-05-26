@@ -4,11 +4,11 @@ This guide will describe how you should input into Github Actions workflow input
 
 Currently we support three testing z/OS servers:
 
-- zzow02 (ACF2)
-- zzow03 (Top Secret/TSS)
-- zzow04 (RACF)
+- zzow09 (ACF2)
+- zzow10 (Top Secret/TSS)
+- zzow11 (RACF)
 
-Testing pipeline is running tests in parallel. The workflow will try to acquire the resource lock if available. If the resource lock is occupied, the workflow will wait until the lock is succesfully acquired.
+Testing pipeline is running tests in parallel. The workflow will try to acquire the resource lock if available. If the resource lock is occupied, the workflow will wait until the lock is successfully acquired.
 
 Workflow trigger is at [cicd-test](https://github.com/zowe/zowe-install-packaging/actions/workflows/cicd-test.yml)
 
@@ -16,22 +16,22 @@ Workflow trigger is at [cicd-test](https://github.com/zowe/zowe-install-packagin
 
 ### Choose Test Server
 
-- This input is a choice, and it's mandatory.  
-- You can choose from one of `zzow02`, `zzow03`, `zzow04`, `zzow02,zzow03,zzow04` (if you want to run the test on all zzow servers), or `Any zzow servers` (pick any zzow servers, potentially help reduce wait time)
+- This input is a choice, and it's mandatory.
+- You can choose from one of `zzow09`, `zzow10`, `zzow11`, `zzow09,zzow10,zzow11` (if you want to run the test on all zzow servers), or `Any zzow servers` (pick any zzow servers, potentially help reduce wait time)
 - Default is `Any zzow servers`
 
 ### Choose Install Test
 
-- This input is a choice and it's mandatory.  
+- This input is a choice and it's mandatory.
 - You can choose from the list below:
   - Convenience Pax
   - SMPE FMID
   - SMPE PTF
   - Extensions
   - Keyring
-  - z/OS node v14
-  - z/OS node v16
-  - z/OS node v18
+  - z/OS java 11 Pax
+  - z/OS java 11 Keyring
+  - z/OS node v20
   - Non-strict Verify External Certificate
   - Install PTF twice
   - VSAM Caching storage method
@@ -39,7 +39,7 @@ Workflow trigger is at [cicd-test](https://github.com/zowe/zowe-install-packagin
   - Generate API documentation
   - Zowe Release Tests
   - Zowe Nightly Tests
-- Note that `Zowe Release Tests` is generally run by the DevOps engineer during RC phase. It includes most of the tests above across all three zzow servers.  
+- Note that `Zowe Release Tests` is generally run by the DevOps engineer during RC phase. It includes most of the tests above across all three zzow servers.
 - Generally speaking, all tests listed above can be run on any zzow server.
 - For the tests automatically triggered by your PR build, it is running `Convenience Pax` test on any zzow server.
 - The time it takes to run each test see [appendix](#appendix)
@@ -54,7 +54,7 @@ Background: CICD testing relies on a `zowe.pax` or `zowe-smpe.zip` (for SMPE ins
 
 - If you leave this input blank,
   - the pipeline will look for the most up to date build in your running branch, and use a default zowe artifactory pattern to search the exact artifactory file path. Default pattern will be either:
-    - `libs-snapshot-local/org/zowe/*zowe*{branch-name}*.pax` for almost all tests except SMPE install related.  
+    - `libs-snapshot-local/org/zowe/*zowe*{branch-name}*.pax` for almost all tests except SMPE install related.
     - or `libs-snapshot-local/org/zowe/*zowe-smpe*{branch-name}*.zip` when running SMPE related install test (SMPE FMID, SMPE PTF or Install PTF twice).
   - Note that `{branch-name}` will be substituted with the current running branch.
   - **Attention**: when you run SMPE related install tests, if the latest build does not include packaging SMPE (ie. no `zowe-smpe.zip` is found in the latest build), this pipeline will fail and throw an error. A bit of context: all zowe build will produce zowe.pax; other installation method artifacts like SMPE or docker artifact is on demand and can be skipped when building. Therefore, if you run a SMPE install test and not specifying this input, you are telling the pipeline to use latest build and the pipeline will assume the latest build contains the SMPE artifact. Error mentioned earlier rises when the latest build does not have SMPE artifact.
@@ -86,7 +86,7 @@ Background: CICD testing relies on a `zowe.pax` or `zowe-smpe.zip` (for SMPE ins
 
 ### Custom Zowe CLI Artifactory Pattern
 
-- This input is optional, it is designed to take in customized Zowe CLI path on artifactory.  
+- This input is optional, it is designed to take in customized Zowe CLI path on artifactory.
 - If not specified, this pipeline will search the latest artifact using the pattern `libs-snapshot-local/org/zowe/cli/zowe-cli-package/*/zowe-cli-package-1*.zip`.
 
 ### Custom Extension List
@@ -104,17 +104,17 @@ Background: CICD testing relies on a `zowe.pax` or `zowe-smpe.zip` (for SMPE ins
   - `sample-node-api`
   - `sample-node-api(my/new/path/sample-node-api-cus.pax);sample-trial-app`
   - `sample-node-api(my/new/path/sample-node-api-cus.pax);sample-trial-app(https://private-repo.org/new-zowe-ext/123.pax);sample-new-zowe-ext`
-- This input is only honored when you are running `Extension` test.  
+- This input is only honored when you are running `Extension` test.
 
 ## Zowe Release Tests (DevOps only)
 
 When running CICD integration tests during RC stage, the following string will be parsed into the Github Actions matrix. As a result, a total of 21 independent jobs will be spawned.
 
 ```
-basic/install.ts(zzow02,zzow03,zzow04);basic/install-ptf.ts(zzow02,zzow03,zzow04);basic/install-ext.ts(zzow03);extended/keyring.ts(zzow02,zzow03,zzow04);extended/node-versions/node-v8.ts(zzow02,zzow03,zzow04);extended/node-versions/node-v14.ts(zzow02,zzow03,zzow04);extended/certificates/nonstrict-verify-external-certificate.ts(zzow02)
+basic/install.ts(zzow09,zzow10,zzow11);basic/install-ptf.ts(zzow09,zzow10,zzow11);basic/install-ext.ts(zzow10);extended/keyring.ts(zzow09,zzow10,zzow11);extended/node-versions/node-v20.ts(zzow09,zzow10,zzow11);extended/node-versions/node-v20.ts(zzow09,zzow10,zzow11);extended/certificates/nonstrict-verify-external-certificate.ts(zzow09)
 ```
 
-Total elapsed time when running in parallel is approximately 3.5 hours on paper idealy if all parallel jobs are executing at the same time. In reality, from numerous tests performed, total elapsed time is around 4 hours.  
+Total elapsed time when running in parallel is approximately 3.5 hours on paper ideally if all parallel jobs are executing at the same time. In reality, from numerous tests performed, total elapsed time is around 4 hours.
 
 ## Appendix
 
@@ -123,10 +123,12 @@ Selected test running elapsed time:
 | ---- | ------------ |
 | Convenience Pax | 53m |
 | SMPE PTF | 68m |
-| z/OS node v18 | 45m |
-| z/OS node v16 | 45m |
-| z/OS node v14 | 45m |
+| Keyring | 53m |
+| z/OS node v20 | 45m |
+| z/OS node v22 | 45m |
+| z/OS java 11 Pax | 53m |
+| z/OS java 11 Keyring | 53m |
 | Keyring | 53m |
 | Non-strict Verify External Certificate | 51m |
 | Extensions | 67m
-| Zowe Release Tests | ~6hr 15 mins  
+| Zowe Release Tests | ~6hr 15 mins

@@ -9,9 +9,7 @@
   Copyright Contributors to the Zowe Project.
 */
 
-import * as std from 'std';
-import * as os from 'os';
-import * as zos from 'zos';
+import * as std from 'cm_std';
 
 import * as common from './common';
 import * as shell from './shell';
@@ -26,16 +24,18 @@ export function validateZosmfHostAndPort(zosmfHost: string, zosmfPort: number): 
     return false;
   }
   let zosmfCheckPassed=true;
+  let execReturn: any;
 
   if (!std.getenv('NODE_HOME')) {
     common.printError(`Warning: Could not validate if z/OS MF is available on 'https://${zosmfHost}:${zosmfPort}/zosmf/info'. NODE_HOME is not defined.`);
     zosmfCheckPassed=false;
   } else {
-    let execReturn = shell.execOutSync(`${std.getenv('NODE_HOME')}/bin/node`, `${std.getenv('ZWE_zowe_runtimeDirectory')}/bin/utils/curl.js`, `"https://${zosmfHost}:${zosmfPort}/zosmf/info"`, `-k`, `-H`, `"X-CSRF-ZOSMF-HEADER: true"`, `--response-type`, `status`);
+    execReturn = shell.execOutSync(`${std.getenv('NODE_HOME')}/bin/node`, `${std.getenv('ZWE_zowe_runtimeDirectory')}/bin/utils/curl.js`, `https://${zosmfHost}:${zosmfPort}/zosmf/info`, `-k`, `-H`, `X-CSRF-ZOSMF-HEADER: true`, `--response-type`, `status`);
     if (execReturn.rc || !execReturn.out) {
       common.printError(`Warning: Could not validate if z/OS MF is available on 'https://${zosmfHost}:${zosmfPort}/zosmf/info'. No response code from z/OSMF server.`);
       zosmfCheckPassed=false
-    } else if (execReturn.out != '200') {
+    // RSU2512 -> running z/OSMF is returning 401
+    } else if (['200', '401'].includes(execReturn.out) == false) {
       common.printError(`Could not contact z/OS MF on 'https://${zosmfHost}:${zosmfPort}/zosmf/info' - ${execReturn.out}`);
       zosmfCheckPassed=false
       return false;
@@ -43,18 +43,7 @@ export function validateZosmfHostAndPort(zosmfHost: string, zosmfPort: number): 
   }
 
   if (zosmfCheckPassed) {
-    common.printMessage(`Successfully checked z/OS MF is available on 'https://${zosmfHost}:${zosmfPort}/zosmf/info'`)
+    common.printMessage(`Successfully checked z/OS MF is available on 'https://${zosmfHost}:${zosmfPort}/zosmf/info' - ${execReturn.out}`);
   }
   return zosmfCheckPassed;
-}
-
-//TODO isnt this completely backwards?
-export function validateZosmfAsAuthProvider(zosmfHost: string, zosmfPort: number, authProvider: string): boolean {
-  if (zosmfHost && zosmfPort) {
-    if (authProvider == 'zosmf') {
-      common.printError("z/OSMF is not configured. Using z/OSMF as authentication provider is not supported.");
-      return true;
-    }
-  }
-  return false;
 }

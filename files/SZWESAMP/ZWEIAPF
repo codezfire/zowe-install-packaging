@@ -1,0 +1,36 @@
+//ZWEIAPF JOB
+//*
+//* This program and the accompanying materials are made available
+//* under the terms of the Eclipse Public License v2.0 which
+//* accompanies this distribution, and is available at
+//* https://www.eclipse.org/legal/epl-v20.html
+//*
+//* SPDX-License-Identifier: EPL-2.0
+//*
+//* Copyright Contributors to the Zowe Project. 2020, 2020
+//*
+//*********************************************************************
+//*
+//*  This JCL is used to set APF for the two datasets of Zowe
+//*  which need it. You can issue this, or use another
+//*  way to accomplish the task.
+//*
+//* CAUTION: This is neither a JCL procedure nor a complete job.
+//* Before using this JCL, you will have to make the following
+//* modifications:
+//*
+//* 1) Update JOB to meet your system requirements.
+//* 2) Replace {zowe.setup.dataset.authLoadlib}
+//*    and {zowe.setup.dataset.authPluginLib} with data set names.
+//* 3) If SMS not used, replace SMS with VOLUME=volume
+//*
+//*********************************************************************
+//*
+//EXEC14   EXEC  PGM=IEFBR14
+//*
+//* {zowe.setup.dataset.authLoadlib} holds the APF portion of Zowe
+// COMMAND 'SETPROG APF,ADD,DSN={zowe.setup.dataset.authLoadlib},SMS'
+//*
+//* {zowe.setup.dataset.authPluginLib} holds product plugins for ZIS
+// COMMAND 'SETPROG APF,ADD,DSN={zowe.setup.dataset.authPluginLib},SMS'
+//*

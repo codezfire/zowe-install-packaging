@@ -9,7 +9,7 @@
   Copyright Contributors to the Zowe Project.
 */
 
-import * as std from 'std';
+import * as std from 'cm_std';
 import * as common from '../../../../libs/common';
 import * as config from '../../../../libs/config';
 import * as json from '../../../../libs/json';
@@ -17,7 +17,7 @@ import * as fakejq from '../../../../libs/fakejq';
 
 export function execute(configPath:string, newValue: any, haInstance?: string, valueAsString?: boolean) {
   common.requireZoweYaml();
-  const configFiles=std.getenv('ZWE_CLI_PARAMETER_CONFIG');
+  const configFiles=std.getenv('ZWE_PRIVATE_CONFIG_ORIG');
   const ZOWE_CONFIG=config.getZoweConfig();
 
   if (!valueAsString) {

@@ -3,6 +3,8 @@ tmp/
 .vscode/
 .pytest_cache/
 *.pyc
+*.iml
+.idea
 
 # emacs save files
 *~
@@ -44,7 +46,7 @@ manifest.json
 artifactory-download-spec.json
 
 # zowe jobs output
-output/
+./output/
 
 # release temporary folder
 .release/

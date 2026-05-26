@@ -9,8 +9,8 @@
   Copyright Contributors to the Zowe Project.
 */
 
-import * as std from 'std';
-import * as os from 'os';
+import * as std from 'cm_std';
+import * as os from 'cm_os';
 import * as zos from 'zos';
 import * as xplatform from 'xplatform';
 
@@ -23,7 +23,6 @@ import * as config from '../../../../libs/config';
 import * as component from '../../../../libs/component';
 import * as varlib from '../../../../libs/var';
 import * as java from '../../../../libs/java';
-import * as node from '../../../../libs/node';
 import * as zosmf from '../../../../libs/zosmf';
 import { PathAPI as pathoid } from '../../../../libs/pathoid';
 
@@ -99,6 +98,8 @@ export function execute(componentFile: string, autoEncoding?: string, upgrade?: 
       result = shell.execSync('sh', '-c', `cd ${tmpDir} && jar xf ${componentFile}`);
     } else if (componentFile.endsWith('.tar')) {
       result = shell.execSync('sh', '-c', `_CEE_RUNOPTS="FILETAG() POSIX(ON)" cd ${tmpDir} && pax -x tar -rf "${componentFile}"`);
+    } else {
+      common.printErrorAndExit(`Error ZWEL0318E File extension invalid. Supported file extensions: .pax, .tar, .zip`, undefined, 318);
     }
     if (result.rc) {
       common.printError(`Extract completed with rc=${result.rc}`);
@@ -107,7 +108,7 @@ export function execute(componentFile: string, autoEncoding?: string, upgrade?: 
     result = shell.execOutSync('sh', '-c', `cd ${tmpDir} && ls -la 2>&1`);
     common.printTrace(stringlib.paddingLeft(result.out, "    "));
   } else {
-    common.printErrorAndExit(`Error ZWEL0313E: Cannot file component file ${componentFile}.`, undefined, 313);
+    common.printErrorAndExit(`Error ZWEL0313E: Cannot find component file ${componentFile}.`, undefined, 313);
   }
 
   // automatically tag files
@@ -151,6 +152,20 @@ export function execute(componentFile: string, autoEncoding?: string, upgrade?: 
     common.printErrorAndExit(`Error ZWEL0167E: Cannot find component name from ${componentFile} package manifest`, undefined, 167);
   }
   common.printDebug(`- Component name found as ${componentName}`);
+
+  // If the component has appfw plugins, their validity should be checked against appfw plugin schema.
+  //   If invalid, the installation will exit with an error message.
+  if (manifest.appfwPlugins) {
+    manifest.appfwPlugins.forEach((appfwPlugin: {path: string})=> {
+      let result = component.getPluginDefinition(pathoid.resolve(tmpDir, appfwPlugin.path), true);
+      //Normally, getPluginDefinition would quit upon failure. But we want to cleanup the tmpDir before that.
+      // So, we pass true to allow it to continue, check for null, and then remove the tmpdir and exit if so.
+      if (result === null) {
+        fs.rmrf(tmpDir);
+        std.exit(1);
+      }
+    });
+  }
   
   const destinationDir = pathoid.resolve(targetDir, componentName);
   const bkpDir = pathoid.resolve(targetDir, `${componentName}_zwebkp`);

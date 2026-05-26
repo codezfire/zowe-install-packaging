@@ -165,6 +165,22 @@ class APIMLAuth {
     expect(res.data).to.be.empty;
   }
 
+  _validateResponse(res, property) {
+    // Validate the response at least basically
+    expect(res.status).to.be.oneOf([HTTP_STATUS.SUCCESS, HTTP_STATUS.NO_CONTENT]);
+    expect(res.headers).to.be.an('object');
+    if (property) {
+      expect(res.data).to.have.property(property);
+    }
+  }
+
+  _extractAuth0AccessToken(res) {
+    if (!res.data.access_token) {
+      throw new Error('There was no access token return; authentication was unsuccessful');
+    }
+    return res.data.access_token;
+  }
+
   _extractAuthToken(res) {
     const authCookie = this.httpRequest.findCookieInResponse(res, APIML_AUTH_COOKIE);  
     // Example:
@@ -174,6 +190,28 @@ class APIMLAuth {
       throw new Error('The authentication was unsuccessful, failed to find authentication token.');
     }
 
+    return token;
+  }
+
+  _extractSessionToken(res) {
+    const token = res.data['sessionToken'];
+    if (!token) {
+      throw new Error('The authentication was unsuccessful, failed to extract session token.');
+    }
+    expect(token).to.be.an('string');
+    return token;
+  }
+
+  _extractOauthAccessToken(res) {
+    let token;
+    // Example: <html><response name="access_token" value="tokenvalue1234"/></html>
+    const matches = res.data.toString().match(/name="access_token" value="(.*)"/i);
+    if (matches.length > 1) {
+      token = matches[1];
+    }
+    if (!token) {
+      throw new Error('The authentication was unsuccessful, failed to extract access token.');
+    }
     return token;
   }
 
@@ -221,6 +259,100 @@ class APIMLAuth {
     this._validateAuthResponse(res);
 
     return this._extractAuthToken(res);
+  }
+
+  async loginViaAuth0(clientId, clientSecret, username, password) {
+    debug('================================= APIMLAuth.loginViaAuth0');
+    expect(process.env.OIDC_HOSTNAME, 'OIDC_HOSTNAME is empty').to.not.be.empty;
+    if (!clientId) {
+      expect(process.env.OIDC_CLIENT_ID, 'OIDC_CLIENT_ID is empty').to.not.be.empty;
+      clientId = process.env.OIDC_CLIENT_ID;
+    }
+    if (!clientSecret) {
+      expect(process.env.OIDC_CLIENT_SECRET, 'OIDC_CLIENT_SECRET is empty').to.not.be.empty;
+      clientSecret = process.env.OIDC_CLIENT_SECRET;
+    }
+    if (!username) {
+      expect(process.env.OIDC_USER, 'OIDC_USER is not defined').to.not.be.empty;
+      username = process.env.OIDC_USER;
+    }
+    if (!password) {
+      expect(process.env.OIDC_PASSWORD, 'OIDC_PASSWORD is not defined').to.not.be.empty;
+      password = process.env.OIDC_PASSWORD;
+    }
+    const auth0HttpReq = new HTTPRequest(`https://${process.env.OIDC_HOSTNAME}`);
+    const authRes = await auth0HttpReq.request({
+      url: '/oauth/token',
+      headers: {
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json'
+      },
+      method: 'POST',
+      data: {
+        'grant_type': 'password',
+        'client_id': clientId,
+        'client_secret': clientSecret,
+        'username': username,
+        'password': password,
+        'audience': 'https://apiml',
+      }
+    });
+    return this._extractAuth0AccessToken(authRes);
+  }
+
+  // deprecated, test okta tenant no longer supported. 
+  //  Code should work if a new tenant is created.
+  async loginViaOkta(clientId, username, password) {
+    debug('================================= APIMLAuth.loginViaOkta');
+    expect(process.env.OIDC_HOSTNAME, 'OIDC_HOSTNAME is empty').to.not.be.empty;
+    if (!clientId) {
+      expect(process.env.OIDC_CLIENT_ID, 'OIDC_CLIENT_ID is empty').to.not.be.empty;
+      clientId = process.env.OIDC_CLIENT_ID;
+    }
+    if (!username) {
+      expect(process.env.OIDC_USER, 'OIDC_USER is not defined').to.not.be.empty;
+      username = process.env.OIDC_USER;
+    }
+    if (!password) {
+      expect(process.env.OIDC_PASSWORD, 'OIDC_PASSWORD is not defined').to.not.be.empty;
+      password = process.env.OIDC_PASSWORD;
+    }
+
+    const oktaHttpReq = new HTTPRequest(`https://${process.env.OIDC_HOSTNAME}`);
+    
+    const sessionRes = await oktaHttpReq.request({
+      url: '/api/v1/authn',
+      method: 'post',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      data: {
+        username,
+        password,
+      },
+    });
+
+    this._validateResponse(sessionRes, 'sessionToken');
+    const sessionToken = this._extractSessionToken(sessionRes);
+    const loginUri = 'https://oidcdebugger.com/debug';
+
+    const authRes = await oktaHttpReq.request({
+      url: '/oauth2/default/v1/authorize',
+      method: 'get',
+      params: {
+        'client_id': clientId,
+        'redirect_uri': loginUri,
+        'response_type': 'token',
+        'response_mode': 'form_post',
+        'sessionToken': sessionToken,
+        'scope': 'openid',
+        'state': 'SanityTest',
+        'nonce': 'SanityTest',
+      },
+    });
+
+    return this._extractAccessToken(authRes);
   }
 
   async logout(headers) {
